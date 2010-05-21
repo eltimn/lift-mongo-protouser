@@ -688,7 +688,6 @@ package code {
       }
 
       protected def localForm(user: ModelType, ignorePassword: Boolean): NodeSeq = {
-      /*
         signupFields.
         filter(f => !ignorePassword || (f match {
               case f: PasswordField[ModelType] => false
@@ -697,24 +696,7 @@ package code {
         flatMap(f =>
           f.toForm.toList.map(form =>
             (<tr><td>{f.displayName}</td><td>{form}</td></tr>) ) )
-      
-        for {
-          f <- signupFields
-        } yield
-          <tr><td>{f.displayName}</td><td>{f.toForm}</td></tr>
-        */
-        val formXhtml: NodeSeq = {
-          <tr><td>{user.firstName.displayName}</td><td>{user.firstName.toForm}</td></tr>
-          <tr><td>{user.lastName.displayName}</td><td>{user.lastName.toForm}</td></tr>
-          <tr><td>{user.email.displayName}</td><td>{user.email.toForm}</td></tr>
-          <tr><td>{user.locale.displayName}</td><td>{user.locale.toForm}</td></tr>
-          <tr><td>{user.timezone.displayName}</td><td>{user.timezone.toForm}</td></tr>
-        }
-
-        if (!ignorePassword)
-          formXhtml ++ <tr><td>{user.password.displayName}</td><td>{user.password.toForm}</td></tr>
-        else
-          formXhtml
+        
       }
 
       protected def wrapIt(in: NodeSeq): NodeSeq =
