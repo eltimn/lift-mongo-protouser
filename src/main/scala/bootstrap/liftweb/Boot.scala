@@ -7,7 +7,7 @@ import _root_.net.liftweb.http.provider._
 import _root_.net.liftweb.sitemap._
 import _root_.net.liftweb.sitemap.Loc._
 import Helpers._
-import _root_.net.liftweb.mapper.{DB, ConnectionManager, Schemifier, DefaultConnectionIdentifier, StandardDBVendor}
+import _root_.net.liftweb.mongodb._
 import _root_.java.sql.{Connection, DriverManager}
 import _root_.code.model._
 
@@ -18,21 +18,13 @@ import _root_.code.model._
  */
 class Boot {
   def boot {
-    if (!DB.jndiJdbcConnAvailable_?) {
-      val vendor = 
-	new StandardDBVendor(Props.get("db.driver") openOr "org.h2.Driver",
-			     Props.get("db.url") openOr 
-			     "jdbc:h2:lift_proto.db;AUTO_SERVER=TRUE",
-			     Props.get("db.user"), Props.get("db.password"))
-
-      LiftRules.unloadHooks.append(vendor.closeAllConnections_! _)
-
-      DB.defineConnectionManager(DefaultConnectionIdentifier, vendor)
-    }
+    MongoDB.defineDb(
+		  DefaultMongoIdentifier,
+		  MongoAddress(MongoHost(), "lift_app")
+		)
 
     // where to search snippet
     LiftRules.addToPackages("code")
-    Schemifier.schemify(true, Schemifier.infoF _, User)
 
     // Build SiteMap
     val entries = Menu(Loc("Home", List("index"), "Home")) ::
@@ -57,8 +49,6 @@ class Boot {
     LiftRules.early.append(makeUtf8)
 
     LiftRules.loggedInTest = Full(() => User.loggedIn_?)
-
-    S.addAround(DB.buildLoanWrapper)
   }
 
   /**
