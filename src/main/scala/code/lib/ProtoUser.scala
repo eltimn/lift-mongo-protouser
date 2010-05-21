@@ -1,6 +1,8 @@
 package code {
   package lib {
-
+    /*
+    * Copied from: https://gist.github.com/cabb72f6a938699b742c
+    */ 
 
     import _root_.net.liftweb.http.{js, S, SHtml, SessionVar, RequestVar, CleanRequestVarOnSessionTransition}
     import js._
@@ -27,7 +29,6 @@ package code {
     import _root_.scala.xml.transform._
 
     import _root_.com.mongodb._
-    import _root_.com.mongodb.util.JSON
 
     trait ProtoUser[T <: ProtoUser[T]] extends MongoRecord[T] with MongoId[T] {
       self: T =>
