@@ -2,7 +2,7 @@ Install Java, Simple Build Tool, and Git
 
 Clone this repository with:
 
-git clone git://github.com/dpp/lift_sbt_prototype.git
+git clone git://github.com/eltimn/lift-mongo-protouser.git
 
 Then cd into lift_sbt_prototype and type:
 sbt
