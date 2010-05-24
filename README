@@ -1,3 +1,5 @@
+NOTICE: This is only compatible with branch tcn_issue_533 of Lift.
+
 Install Java, Simple Build Tool, and Git
 
 Clone this repository with:

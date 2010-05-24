@@ -19,6 +19,7 @@ package code {
     import _root_.net.liftweb.record.field._
     import _root_.net.liftweb.mongodb._
     import _root_.net.liftweb.mongodb.record._
+    import _root_.net.liftweb.mongodb.record.field.MongoPasswordField
     import _root_.net.liftweb.util.Mailer._
     import _root_.net.liftweb.json.DefaultFormats
     import _root_.net.liftweb.json.JsonDSL._
@@ -45,6 +46,20 @@ package code {
 
       object email extends EmailField(this, 48) {
         override def displayName = ??("email.address")
+        
+        private def valUnique(msg: => String)(valBox: Box[String]): Box[Node] = {
+			    valBox.flatMap {
+				    s => owner.meta.findAll(name, value) match {
+					    case Nil => Empty
+					    case usr :: Nil if (usr.id == owner.id) => Empty
+					    case _ => Full(Text(msg))
+				    }
+			    }
+		    }
+
+		    override def validators =
+			    valUnique("That email address is already registered with us.") _	::
+			    super.validators
       }
 
 
@@ -57,7 +72,7 @@ package code {
       }
 
 
-      object password extends PasswordField(this) {
+      object password extends MongoPasswordField(this, 6) {
         override def displayName = ??("password")
       }
 
@@ -78,15 +93,15 @@ package code {
       }
 
       def niceNameWEmailLink = <a href={"mailto:"+email.value}>{niceName}</a>
-
-      def matchPassword(toMatch : String) = {
-        hash("{"+toMatch+"} salt={" + password.salt + "}") == password.value
-      }
       
     }
 
     trait MetaMegaProtoUser[ModelType <: MegaProtoUser[ModelType]] extends MongoMetaRecord[ModelType] {
       self: ModelType =>
+      
+      import net.liftweb.json.JsonDSL._
+
+      ensureIndex(("email" -> 1), true) // unique email
 
       def signupFields = firstName :: lastName :: email :: locale :: timezone :: password :: Nil
 
@@ -359,10 +374,9 @@ package code {
       def signupXhtml(user: ModelType) = {
         (<form method="post" action={S.uri}>
             <table>
-              <tr><td
-                  colspan="2">{ S.??("sign.up") }</td></tr>
+              <tr><td>{ S.??("sign.up") }</td></tr>
               {localForm(user, false)}
-              <tr><td>&nbsp;</td><td><user:submit/></td></tr>
+              <tr><td><user:submit/></td></tr>
             </table>
          </form>)
       }
@@ -408,14 +422,17 @@ package code {
        */
       protected def actionsAfterSignup(theUser: ModelType) {
         theUser.validated.set(skipEmailValidation)
-        theUser.save
-        if (!skipEmailValidation) {
-          sendValidationEmail(theUser)
-          S.notice(S.??("sign.up.message"))
-        } else {
-          S.notice(S.??("welcome"))
-          logUserIn(theUser)
+        if (theUser.saveStrict) {
+          if (!skipEmailValidation) {
+            sendValidationEmail(theUser)
+            S.notice(S.??("sign.up.message"))
+          } else {
+            S.notice(S.??("welcome"))
+            logUserIn(theUser)
+          }
         }
+        else
+          S.error("Error signing up")
       }
 
       /**
@@ -429,14 +446,6 @@ package code {
 
 
         def testSignup() {
-          //TODO: Remove this
-          signupFields.foreach((field) => {
-              theUser.fieldByName(field.name) match {
-                case Full(instField) => println(field.name + ": " + instField.value)
-                case _ => println(field.name + " Error!")
-              }
-            })
-
           validateSignup(theUser) match {
             case Nil =>
               actionsAfterSignup(theUser)
@@ -491,9 +500,9 @@ package code {
       def login = {
         if (S.post_?) {
           S.param("username").
-          flatMap(username => meta.find(("email" -> email.value) ~ ("username" -> username))) match {
+          flatMap(username => meta.find(("email" -> username))) match {
             case Full(user) if user.validated.value &&
-              user.matchPassword(S.param("password").openOr("*")) =>
+              user.password.isMatch(S.param("password").openOr("*")) =>
               S.notice(S.??("logged.in"))
               logUserIn(user)
               
@@ -597,20 +606,26 @@ package code {
       def passwordReset(id: String) =
         meta.find(id) match {
           case Full(user) =>
-            def finishSet() {
-              validate(user) match {
-                case Nil => S.notice(S.??("password.changed"))
-                  user.save
-                  logUserIn(user); S.redirectTo(homePage)
+            var newPassword: List[String] = Nil
 
-                case xs => S.error(xs)
+            def finishSet() {
+              if (newPassword.length != 2 || newPassword.head != newPassword(1))
+                S.error("New passwords don't match")
+              else {
+                user.password.setPassword(newPassword.head)
+                user.validate match {
+                  case Nil =>
+                    user.save
+                    logUserIn(user)
+                    S.notice(S.??("password.changed"))
+                    S.redirectTo(homePage)
+                  case xs => S.error(xs)
+                }
               }
             }
-            user.save
 
             bind("user", passwordResetXhtml,
-                 "pwd" -> SHtml.password_*("",(p: List[String]) =>
-                user.password.setFromAny(p)),
+                 "pwd" -> SHtml.password_*("", (p: List[String]) => newPassword = (p)),
                  "submit" -> SHtml.submit(S.??("set.password"), finishSet _))
           case _ => S.error(S.??("password.link.invalid")); S.redirectTo(homePage)
         }
@@ -633,9 +648,12 @@ package code {
         var newPassword: List[String] = Nil
 
         def testAndSet() {
-          if (!user.matchPassword(oldPassword)) S.error(S.??("wrong.old.password"))
+          if (!user.password.isMatch(oldPassword))
+            S.error(S.??("wrong.old.password"))
+          else if (newPassword.length != 2 || newPassword.head != newPassword(1))
+            S.error("New passwords don't match")
           else {
-            user.password.setFromAny(newPassword)
+            user.password.setPassword(newPassword.head)
             user.validate match {
               case Nil => user.save
                 S.notice(S.??("password.changed"))
@@ -653,9 +671,9 @@ package code {
 
       def editXhtml(user: ModelType) = {
         (<form method="post" action={S.uri}>
-            <table><tr><td colspan="2">{S.??("edit")}</td></tr>
+            <table><tr><td>{S.??("edit")}</td></tr>
               {localForm(user, true)}
-              <tr><td>&nbsp;</td><td><user:submit/></td></tr>
+              <tr><td><user:submit/></td></tr>
             </table>
          </form>)
       }

@@ -1,14 +1,18 @@
 package bootstrap.liftweb
 
+import java.util.Locale
+import javax.mail.{Authenticator, PasswordAuthentication}
+
 import _root_.net.liftweb.util._
 import _root_.net.liftweb.common._
 import _root_.net.liftweb.http._
 import _root_.net.liftweb.http.provider._
 import _root_.net.liftweb.sitemap._
 import _root_.net.liftweb.sitemap.Loc._
-import Helpers._
 import _root_.net.liftweb.mongodb._
-import _root_.java.sql.{Connection, DriverManager}
+
+import Helpers._
+
 import _root_.code.model._
 
 
@@ -16,7 +20,7 @@ import _root_.code.model._
  * A class that's instantiated early and run.  It allows the application
  * to modify lift's environment
  */
-class Boot {
+class Boot extends Loggable {
   def boot {
     MongoDB.defineDb(
 		  DefaultMongoIdentifier,
@@ -49,6 +53,11 @@ class Boot {
     LiftRules.early.append(makeUtf8)
 
     LiftRules.loggedInTest = Full(() => User.loggedIn_?)
+    
+    LiftRules.localeCalculator = localeCalculator _
+    
+    // config an email sender
+		configMailer
   }
 
   /**
@@ -57,4 +66,42 @@ class Boot {
   private def makeUtf8(req: HTTPRequest) {
     req.setCharacterEncoding("UTF-8")
   }
+  
+  private def localeCalculator(request : Box[HTTPRequest]): Locale =
+    User.currentUser.map(u => new Locale(u.locale.value)) openOr Locale.getDefault
+    
+  /*
+	* Config mailer
+	*/
+	private def configMailer {
+
+		var isAuth = Props.get("mail.smtp.auth", "false").toBoolean
+
+		Mailer.customProperties = Props.get("mail.smtp.host", "localhost") match {
+			case "smtp.gmail.com" =>
+				isAuth = true
+				Map(
+					"mail.smtp.host" -> "smtp.gmail.com",
+					"mail.smtp.port" -> "587",
+					"mail.smtp.auth" -> "true",
+					"mail.smtp.starttls.enable" -> "true"
+				)
+			case h => Map(
+				"mail.smtp.host" -> h,
+				"mail.smtp.port" -> Props.get("mail.smtp.port", "25"),
+				"mail.smtp.auth" -> isAuth.toString
+			)
+		}
+
+		if (isAuth) {
+			(Props.get("mail.smtp.user"), Props.get("mail.smtp.pass")) match {
+				case (Full(username), Full(password)) =>
+					Mailer.authenticator = Full(new Authenticator() {
+						override def getPasswordAuthentication = new
+							PasswordAuthentication(username, password)
+					})
+				case _ => logger.error("Username/password not supplied for Mailer.")
+			}
+		}
+	}
 }
