@@ -422,17 +422,14 @@ package code {
        */
       protected def actionsAfterSignup(theUser: ModelType) {
         theUser.validated.set(skipEmailValidation)
-        if (theUser.saveStrict) {
-          if (!skipEmailValidation) {
-            sendValidationEmail(theUser)
-            S.notice(S.??("sign.up.message"))
-          } else {
-            S.notice(S.??("welcome"))
-            logUserIn(theUser)
-          }
+        theUser.save(true)
+        if (!skipEmailValidation) {
+          sendValidationEmail(theUser)
+          S.notice(S.??("sign.up.message"))
+        } else {
+          S.notice(S.??("welcome"))
+          logUserIn(theUser)
         }
-        else
-          S.error("Error signing up")
       }
 
       /**
