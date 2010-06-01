@@ -20,7 +20,7 @@ object User extends User with MetaMegaProtoUser[User] {
   override def screenWrap = Full(<lift:surround with="default" at="content">
 			       <lift:bind /></lift:surround>)
   // comment this line out to require email validations
-  override def skipEmailValidation = true
+  //override def skipEmailValidation = true
   
   override def localForm(user: User, ignorePassword: Boolean): NodeSeq = {
     /* This doesn't work either
