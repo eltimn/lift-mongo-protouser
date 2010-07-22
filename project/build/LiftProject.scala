@@ -1,10 +1,8 @@
 import sbt._
 
 class LiftProject(info: ProjectInfo) extends DefaultWebProject(info) {
-  val mavenLocal = "Local Maven Repository" at
-  "file://"+Path.userHome+"/.m2/repository"
 
-  val liftVersion = "2.0-SNAPSHOT"
+  val liftVersion = "2.0"
 
   override def libraryDependencies = Set(
     "net.liftweb" % "lift-webkit" % liftVersion % "compile->default",
