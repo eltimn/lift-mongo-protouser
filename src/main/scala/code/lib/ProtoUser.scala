@@ -449,6 +449,7 @@ package code {
               S.redirectTo(homePage)
 
             case xs => S.error(xs) ; signupFunc(Full(innerSignup _))
+            // case errs => errs foreach {e => S.error(e.msg)} ; signupFunc(Full(innerSignup _))
           }
         }
 
