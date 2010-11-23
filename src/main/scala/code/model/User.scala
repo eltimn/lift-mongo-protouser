@@ -18,9 +18,8 @@ object User extends User with MetaMegaProtoUser[User] {
   override def collectionName = "users" // define the MongoDB collection name
   override def screenWrap = Full(<lift:surround with="default" at="content">
             <lift:bind /></lift:surround>)
-  // comment this line out to require email validations
-  //override def skipEmailValidation = true
-  
+  //override def skipEmailValidation = true // uncomment this line to skip email validations
+
   override def localForm(user: User, ignorePassword: Boolean): NodeSeq = {
     /* This doesn't work either
     for {
@@ -29,15 +28,15 @@ object User extends User with MetaMegaProtoUser[User] {
       <tr><td>{f.displayName}</td><td>{f.toForm}</td></tr>
     */
     val formXhtml: NodeSeq = {
-      <tr><td>{user.firstName.toForm}</td></tr>
-      <tr><td>{user.lastName.toForm}</td></tr>
-      <tr><td>{user.email.toForm}</td></tr>
-      <tr><td>{user.locale.toForm}</td></tr>
-      <tr><td>{user.timezone.toForm}</td></tr>
+      <tr><td>{user.firstName.displayName}</td><td>{user.firstName.toForm openOr Text("")}</td></tr>
+      <tr><td>{user.lastName.displayName}</td><td>{user.lastName.toForm openOr Text("")}</td></tr>
+      <tr><td>{user.email.displayName}</td><td>{user.email.toForm openOr Text("")}</td></tr>
+      <tr><td>{user.locale.displayName}</td><td>{user.locale.toForm openOr Text("")}</td></tr>
+      <tr><td>{user.timezone.displayName}</td><td>{user.timezone.toForm openOr Text("")}</td></tr>
     }
 
     if (!ignorePassword)
-      formXhtml ++ <tr><td>{user.password.toForm}</td></tr>
+      formXhtml ++ <tr><td>{user.password.displayName}</td><td>{user.password.toForm openOr Text("")}</td></tr>
     else
       formXhtml
   }
@@ -46,7 +45,7 @@ object User extends User with MetaMegaProtoUser[User] {
 /**
 * A "User" class that includes first name, last name, password
 */
-class User extends MegaProtoUser[User] {  
+class User extends MegaProtoUser[User] {
   def meta = User // what's the "meta" server
 }
 

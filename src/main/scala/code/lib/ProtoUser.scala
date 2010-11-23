@@ -57,7 +57,6 @@ trait ProtoUser[T <: ProtoUser[T]] extends MongoRecord[T] with MongoId[T] {
       super.validations
   }
 
-
   object locale extends LocaleField(this) {
     override def displayName = ??("locale")
   }
@@ -708,7 +707,6 @@ trait MetaMegaProtoUser[ModelType <: MegaProtoUser[ModelType]] extends MongoMeta
     flatMap(f =>
       f.toForm.toList.map(form =>
         (<tr><td>{f.displayName}</td><td>{form}</td></tr>) ) )
-
   }
 
   protected def wrapIt(in: NodeSeq): NodeSeq =
