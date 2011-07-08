@@ -18,7 +18,7 @@ object User extends User with MetaMegaProtoUser[User] {
   override def collectionName = "users" // define the MongoDB collection name
   override def screenWrap = Full(<lift:surround with="default" at="content">
             <lift:bind /></lift:surround>)
-  //override def skipEmailValidation = true // uncomment this line to skip email validations
+  override def skipEmailValidation = true // uncomment this line to skip email validations
 
   override def localForm(user: User, ignorePassword: Boolean): NodeSeq = {
     /* This doesn't work either
